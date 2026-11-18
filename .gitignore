@@ -1,0 +1,22 @@
+target/
+*.log
+# Archivos compilados
+*.class
+
+# Carpetas de compilación
+bin/
+out/
+build/
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Logs
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
