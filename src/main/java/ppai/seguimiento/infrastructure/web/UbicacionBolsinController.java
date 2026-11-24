@@ -106,10 +106,16 @@ public class UbicacionBolsinController {
                 resultado.codigoComisionDestino(),
                 resultado.comisionMedicaDestino(),
                 resultado.registradaAhora()
-                        ? "Notificación enviada a la bandeja de " + destino + "."
-                        : "La notificación ya estaba en la bandeja de " + destino + "."
+                        ? "Mail enviado a " + destino + "."
+                        : resultado.yaRegistrada()
+                                ? "El mail ya estaba enviado a " + destino + "."
+                                : "No se pudo registrar la notificación para " + destino + ".",
+                resultado.yaRegistrada()
         );
-        return ResponseEntity.status(resultado.registradaAhora() ? HttpStatus.ACCEPTED : HttpStatus.OK).body(response);
+        HttpStatus status = resultado.registradaAhora()
+                ? HttpStatus.ACCEPTED
+                : HttpStatus.OK;
+        return ResponseEntity.status(status).body(response);
     }
 
     @ExceptionHandler(BolsinNoEncontradoException.class)
@@ -146,7 +152,8 @@ public class UbicacionBolsinController {
             boolean registradaAhora,
             String codigoComisionDestino,
             String comisionMedicaDestino,
-            String mensaje
+            String mensaje,
+            boolean yaRegistrada
     ) {
     }
 }

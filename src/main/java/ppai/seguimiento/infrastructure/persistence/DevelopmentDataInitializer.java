@@ -28,6 +28,8 @@ public class DevelopmentDataInitializer implements CommandLineRunner {
     private final String passwordUsuarioPrueba;
     private final String emailSegundoUsuarioPrueba;
     private final String passwordSegundoUsuarioPrueba;
+    private final String emailTercerUsuarioPrueba;
+    private final String passwordTercerUsuarioPrueba;
 
     public DevelopmentDataInitializer(
             SpringDataBolsinRepository repository,
@@ -37,20 +39,25 @@ public class DevelopmentDataInitializer implements CommandLineRunner {
             @Value("${ppai.dev.user.email:ana@example.com}") String emailUsuarioPrueba,
             @Value("${ppai.dev.user.password:demo1234}") String passwordUsuarioPrueba,
             @Value("${ppai.dev.user2.email:luis@example.com}") String emailSegundoUsuarioPrueba,
-            @Value("${ppai.dev.user2.password:demo1234}") String passwordSegundoUsuarioPrueba
+            @Value("${ppai.dev.user2.password:demo1234}") String passwordSegundoUsuarioPrueba,
+            @Value("${ppai.dev.user3.email:maria@example.com}") String emailTercerUsuarioPrueba,
+            @Value("${ppai.dev.user3.password:demo1234}") String passwordTercerUsuarioPrueba
     ) {
         this.repository = repository;
         this.comisionRepository = comisionRepository;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         if (emailUsuarioPrueba.isBlank() || passwordUsuarioPrueba.isBlank()
-                || emailSegundoUsuarioPrueba.isBlank() || passwordSegundoUsuarioPrueba.isBlank()) {
+                || emailSegundoUsuarioPrueba.isBlank() || passwordSegundoUsuarioPrueba.isBlank()
+                || emailTercerUsuarioPrueba.isBlank() || passwordTercerUsuarioPrueba.isBlank()) {
             throw new IllegalArgumentException("Los correos y las contraseñas de prueba no pueden estar vacios.");
         }
         this.emailUsuarioPrueba = emailUsuarioPrueba.trim().toLowerCase(Locale.ROOT);
         this.passwordUsuarioPrueba = passwordUsuarioPrueba;
         this.emailSegundoUsuarioPrueba = emailSegundoUsuarioPrueba.trim().toLowerCase(Locale.ROOT);
         this.passwordSegundoUsuarioPrueba = passwordSegundoUsuarioPrueba;
+        this.emailTercerUsuarioPrueba = emailTercerUsuarioPrueba.trim().toLowerCase(Locale.ROOT);
+        this.passwordTercerUsuarioPrueba = passwordTercerUsuarioPrueba;
     }
 
     @Override
@@ -63,6 +70,7 @@ public class DevelopmentDataInitializer implements CommandLineRunner {
         saveCommissionIfMissing("CM-MDQ-01", "Mar del Plata");
         saveDemoUserIfMissing(emailUsuarioPrueba, passwordUsuarioPrueba, "Ana", "Perez", "CM-CBA-01");
         saveDemoUserIfMissing(emailSegundoUsuarioPrueba, passwordSegundoUsuarioPrueba, "Luis", "Gomez", "CM-ROS-02");
+        saveDemoUserIfMissing(emailTercerUsuarioPrueba, passwordTercerUsuarioPrueba, "Maria", "Lopez", "CM-SFE-01");
         if (!repository.existsById(101)) {
             repository.save(new BolsinEntity(
                     101,
@@ -94,6 +102,12 @@ public class DevelopmentDataInitializer implements CommandLineRunner {
         saveIfMissing(113, "PREC-113", 3.0, "CM-BA-01", "Buenos Aires");
         saveIfMissing(114, "PREC-114", 2.4, "CM-MDZ-03", "Mendoza");
         saveIfMissing(115, "PREC-115", 1.9, "CM-MDQ-01", "Mar del Plata");
+        saveIfMissing(116, "PREC-116", 2.7, "CM-TUC-01", "San Miguel de Tucuman");
+        saveIfMissing(117, "PREC-117", 1.6, "CM-SAL-01", "Salta");
+        saveIfMissing(118, "PREC-118", 2.2, "CM-COR-01", "Villa Carlos Paz");
+        saveRosarioIfMissing(121, "PREC-121", 2.3, "CM-CBA-01", "Cordoba");
+        saveRosarioIfMissing(122, "PREC-122", 1.9, "CM-MDZ-03", "Mendoza");
+        saveRosarioIfMissing(123, "PREC-123", 2.6, "CM-SFE-01", "Santa Fe");
     }
 
     private void saveIfMissing(
@@ -113,6 +127,29 @@ public class DevelopmentDataInitializer implements CommandLineRunner {
                 peso,
                 "CM-CBA-01",
                 "Cordoba",
+                codigoDestino,
+                nombreDestino,
+                EstadoBolsin.ENVIADO
+        ));
+    }
+
+    private void saveRosarioIfMissing(
+            int numeroBolsin,
+            String numeroPrecinto,
+            double peso,
+            String codigoDestino,
+            String nombreDestino
+    ) {
+        if (repository.existsById(numeroBolsin)) {
+            return;
+        }
+        repository.save(new BolsinEntity(
+                numeroBolsin,
+                LocalDate.of(2026, 3, 8),
+                numeroPrecinto,
+                peso,
+                "CM-ROS-02",
+                "Rosario",
                 codigoDestino,
                 nombreDestino,
                 EstadoBolsin.ENVIADO

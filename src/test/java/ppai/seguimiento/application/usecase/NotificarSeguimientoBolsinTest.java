@@ -32,18 +32,18 @@ class NotificarSeguimientoBolsinTest {
     private NotificarSeguimientoBolsin useCase;
 
     @Test
-    void registraNotificacionSinCorreoNiConsultaGps() {
+    void registraNotificacionSinEnviarCorreoNiConsultarGps() {
         Empleado employee = new Empleado("Ana", "Perez", "ana@example.com", new ComisionMedica("CM-CBA-01", "Cordoba"));
         Bolsin bolsin = new Bolsin(101, LocalDate.of(2026, 3, 7), "PREC-101", 2.5,
                 employee.comisionMedicaAsignada(), new ComisionMedica("CM-ROS-02", "Rosario"), EstadoBolsin.ENVIADO);
         when(notificationRepository.findSentByOriginCommissionAndNumberForUpdate("CM-CBA-01", 101))
                 .thenReturn(Optional.of(bolsin));
-
         NotificarSeguimientoBolsin.Resultado result = useCase.ejecutar(employee, 101);
 
         assertTrue(result.registradaAhora());
         assertEquals("CM-ROS-02", result.codigoComisionDestino());
         assertEquals("Rosario", result.comisionMedicaDestino());
+        assertFalse(result.yaRegistrada());
         verify(notificationRepository).markNotificationRegistered(101);
     }
 
@@ -56,7 +56,9 @@ class NotificarSeguimientoBolsinTest {
         when(notificationRepository.findSentByOriginCommissionAndNumberForUpdate("CM-CBA-01", 101))
                 .thenReturn(Optional.of(bolsin));
 
-        assertFalse(useCase.ejecutar(employee, 101).registradaAhora());
+        NotificarSeguimientoBolsin.Resultado result = useCase.ejecutar(employee, 101);
+        assertFalse(result.registradaAhora());
+        assertTrue(result.yaRegistrada());
 
         verify(notificationRepository, never()).markNotificationRegistered(101);
     }

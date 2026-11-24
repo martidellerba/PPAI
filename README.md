@@ -27,7 +27,7 @@ No guardar credenciales ni claves reales en archivos versionados. El perfil loca
 
 El mapa utiliza Google Maps cuando se configura `GOOGLE_MAPS_API_KEY`. La clave se entrega al navegador para cargar el mapa, por lo que debe restringirse por referer HTTP y por las APIs habilitadas en Google Cloud. Sin esa variable, el perfil local conserva el mapa Leaflet/OpenStreetMap existente.
 
-La notificacion es interna: al usar el botón, queda disponible en la bandeja de los usuarios de la comisión de destino y no se duplica al volver a tocarlo, incluso desde otra sesión. No requiere Microsoft Graph, credenciales de correo ni la direccion de un gerente. No se envia correo.
+Las notificaciones se guardan en la bandeja local de la comisión destino. No se conecta a Gmail ni se envía correo real. La interfaz muestra **Mail enviado** al registrar el aviso.
 
 ## Ejecucion de desarrollo
 
@@ -45,6 +45,8 @@ mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
 ```
 
 Abrir `http://localhost:8081/`. El perfil `dev` crea dos cuentas si no existen: `ana@example.com` / `demo1234` (comisión `CM-CBA-01`) y `luis@example.com` / `demo1234` (comisión `CM-ROS-02`). Para cambiar las cuentas de prueba se usan `PPAI_DEV_USER_EMAIL`, `PPAI_DEV_USER_PASSWORD`, `PPAI_DEV_USER2_EMAIL` y `PPAI_DEV_USER2_PASSWORD`. No habilitar el perfil `dev` en un ambiente productivo. Los datos se conservan entre ejecuciones en `data/`. La ubicación mostrada siempre proviene del GPS mock: la aplicación no genera coordenadas de respaldo.
+
+También se crea `maria@example.com` / `demo1234` para la comisión `CM-SFE-01`. Se pueden personalizar con `PPAI_DEV_USER3_EMAIL` y `PPAI_DEV_USER3_PASSWORD`. El perfil demo incluye los bolsines 116 a 118 con origen Córdoba y 121 a 123 con origen Rosario para la cuenta de Luis.
 
 Las cuentas se almacenan en `usuario_sistema`: email en minúsculas, nombre, apellido, hash BCrypt de la contraseña y código de comisión existente. No hay registro público; el administrador de la base debe crear las cuentas y guardar solo hashes (nunca contraseñas en texto plano). En PostgreSQL se puede habilitar `pgcrypto` y generar un hash compatible con BCrypt mediante `crypt(:password, gen_salt('bf', 12))` en una inserción parametrizada. Cada usuario queda asociado a su propia comisión y sesión.
 

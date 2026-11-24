@@ -13,4 +13,5 @@ public interface SpringDataUsuarioRepository extends JpaRepository<UsuarioEntity
     @EntityGraph(attributePaths = "comisionMedica")
     @Query("select usuario from UsuarioEntity usuario where usuario.email = :email")
     Optional<UsuarioEntity> findWithCommissionByEmail(@Param("email") String email);
+
 }

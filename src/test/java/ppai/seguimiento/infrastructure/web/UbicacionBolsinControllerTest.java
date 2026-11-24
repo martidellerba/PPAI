@@ -91,7 +91,7 @@ class UbicacionBolsinControllerTest {
                         .param("consultaId", consultaId.toString())
                         .session(session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(6))
+                .andExpect(jsonPath("$.length()").value(9))
                 .andExpect(jsonPath("$[0].numeroBolsin").value(101))
                 .andExpect(jsonPath("$[0].numeroPrecinto").value("PREC-101"))
                 .andExpect(jsonPath("$[0].comisionMedicaDestino").value("Rosario"))
@@ -101,13 +101,14 @@ class UbicacionBolsinControllerTest {
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.registradaAhora").value(true))
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Notificación enviada a la bandeja de Rosario (CM-ROS-02)."
+                        "Mail enviado a Rosario (CM-ROS-02)."
                 ));
         mockMvc.perform(post("/api/seguimiento/bolsines/101/notificacion").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.registradaAhora").value(false))
+                .andExpect(jsonPath("$.yaRegistrada").value(true))
                 .andExpect(jsonPath("$.mensaje").value(
-                        "La notificación ya estaba en la bandeja de Rosario (CM-ROS-02)."
+                        "El mail ya estaba enviado a Rosario (CM-ROS-02)."
                 ));
         UUID consultaActualizada = registrarConsulta(session);
         mockMvc.perform(get("/api/seguimiento/consultar-ubicacion")
@@ -124,14 +125,14 @@ class UbicacionBolsinControllerTest {
     }
 
     @Test
-    void registraNotificacionSinCorreoNiConsultaGps() throws Exception {
+    void registraNotificacionSimuladaSinConsultaGps() throws Exception {
         MockHttpSession session = crearSesionDePrueba();
 
         mockMvc.perform(post("/api/seguimiento/bolsines/111/notificacion").session(session))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.registradaAhora").value(true))
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Notificación enviada a la bandeja de Rosario (CM-ROS-02)."
+                        "Mail enviado a Rosario (CM-ROS-02)."
                 ));
         mockMvc.perform(post("/api/seguimiento/bolsines/111/notificacion").session(session))
                 .andExpect(status().isOk())
@@ -253,7 +254,7 @@ class UbicacionBolsinControllerTest {
                         .param("consultaId", consultaLuis.toString())
                         .session(luis))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$.length()").value(4))
                 .andExpect(jsonPath("$[0].numeroBolsin").value(102));
     }
 

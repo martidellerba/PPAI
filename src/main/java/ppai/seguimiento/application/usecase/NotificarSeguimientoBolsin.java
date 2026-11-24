@@ -11,7 +11,9 @@ public class NotificarSeguimientoBolsin {
 
     private final BolsinNotificationRepository notificationRepository;
 
-    public NotificarSeguimientoBolsin(BolsinNotificationRepository notificationRepository) {
+    public NotificarSeguimientoBolsin(
+            BolsinNotificationRepository notificationRepository
+    ) {
         this.notificationRepository = notificationRepository;
     }
 
@@ -28,7 +30,8 @@ public class NotificarSeguimientoBolsin {
             return new Resultado(
                     false,
                     bolsin.comisionMedicaDestino().codigo(),
-                    bolsin.comisionMedicaDestino().nombre()
+                    bolsin.comisionMedicaDestino().nombre(),
+                    true
             );
         }
 
@@ -36,10 +39,16 @@ public class NotificarSeguimientoBolsin {
         return new Resultado(
                 true,
                 bolsin.comisionMedicaDestino().codigo(),
-                bolsin.comisionMedicaDestino().nombre()
+                bolsin.comisionMedicaDestino().nombre(),
+                false
         );
     }
 
-    public record Resultado(boolean registradaAhora, String codigoComisionDestino, String comisionMedicaDestino) {
+    public record Resultado(
+            boolean registradaAhora,
+            String codigoComisionDestino,
+            String comisionMedicaDestino,
+            boolean yaRegistrada
+    ) {
     }
 }
