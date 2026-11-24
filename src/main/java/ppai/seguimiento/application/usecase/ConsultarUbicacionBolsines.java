@@ -50,7 +50,8 @@ public class ConsultarUbicacionBolsines {
                     bolsin.estado(),
                     ubicacion.latitud(),
                     ubicacion.longitud(),
-                    ubicacion.fechaHoraUltimaActualizacion()
+                    ubicacion.fechaHoraUltimaActualizacion(),
+                    bolsin.notificacionRegistrada()
             ));
         }
         if (!cancellationToken.complete()) {

@@ -10,32 +10,30 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ConsultaCancellationRegistry {
 
-    private final ConcurrentHashMap<Key, CancellationToken> consultations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Key, ActiveConsultation> consultations = new ConcurrentHashMap<>();
 
     public void register(String sessionId, UUID consultationId) {
         Key key = new Key(sessionId, consultationId);
-        if (consultations.putIfAbsent(key, new CancellationToken()) != null) {
+        if (consultations.putIfAbsent(key, new ActiveConsultation()) != null) {
             throw new IllegalStateException("Ya existe una consulta con ese identificador.");
         }
     }
 
     public CancellationToken get(String sessionId, UUID consultationId) {
-        CancellationToken token = consultations.get(new Key(sessionId, consultationId));
-        if (token == null) {
+        ActiveConsultation consultation = consultations.get(new Key(sessionId, consultationId));
+        if (consultation == null) {
             throw new ConsultaNoActivaException();
         }
-        token.throwIfCancelled();
-        return token;
+        return consultation.start();
     }
 
     public boolean cancel(String sessionId, UUID consultationId) {
         Key key = new Key(sessionId, consultationId);
-        CancellationToken token = consultations.get(key);
-        if (token == null || !token.cancel()) {
+        ActiveConsultation consultation = consultations.get(key);
+        if (consultation == null) {
             return false;
         }
-        consultations.remove(key, token);
-        return true;
+        return consultation.cancel(() -> consultations.remove(key, consultation));
     }
 
     public void finish(String sessionId, UUID consultationId) {
@@ -43,11 +41,30 @@ public class ConsultaCancellationRegistry {
     }
 
     public void cancelAll(String sessionId) {
-        consultations.forEach((key, token) -> {
-            if (key.sessionId().equals(sessionId) && token.cancel()) {
-                consultations.remove(key, token);
+        consultations.forEach((key, consultation) -> {
+            if (key.sessionId().equals(sessionId)) {
+                consultation.cancel(() -> consultations.remove(key, consultation));
             }
         });
+    }
+
+    private static final class ActiveConsultation {
+        private final CancellationToken token = new CancellationToken();
+        private boolean started;
+
+        private synchronized CancellationToken start() {
+            started = true;
+            token.throwIfCancelled();
+            return token;
+        }
+
+        private synchronized boolean cancel(Runnable removeIfNotStarted) {
+            boolean cancelled = token.cancel();
+            if (cancelled && !started) {
+                removeIfNotStarted.run();
+            }
+            return cancelled;
+        }
     }
 
     private record Key(String sessionId, UUID consultationId) { }

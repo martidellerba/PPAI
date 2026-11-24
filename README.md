@@ -5,58 +5,59 @@ Aplicacion web Java/Spring Boot para consultar en un mapa las ubicaciones GPS de
 ## Arquitectura
 
 - `domain/model`: bolsines, comisiones, empleados, estados, ubicaciones y datos de notificacion.
-- `application/port`: contratos de persistencia, GPS, gerente de comision y notificacion.
+- `application/port`: contratos de persistencia y GPS.
 - `application/usecase`: consulta y notificacion de seguimiento.
 - `infrastructure/persistence`: adapters Spring Data JPA y entidades PostgreSQL.
 - `infrastructure/gps/xtr4500l`: cliente REST, Adapter XTR-4500L y DTOs externos.
-- `infrastructure/notification`: envio de correo con Microsoft Graph.
-- `infrastructure/web`: API REST, sesion de desarrollo, configuracion de mapa e interfaz.
+- `infrastructure/web`: API REST, inicio/cierre de sesion, configuracion de mapa e interfaz.
 
-La consulta restringe el repositorio al estado `ENVIADO` y al codigo de comision de origen del empleado en sesion. Los filtros de precinto y destino de la interfaz solo operan sobre esa respuesta. Al seleccionar un bolsín, el usuario debe confirmar el correo; si confirma, el servidor vuelve a validar el alcance, consulta una ubicacion GPS actual y envia esos datos al gerente de la comision destino.
+La consulta restringe el repositorio al estado `ENVIADO` y al codigo de comision de origen del empleado en sesion. Los filtros de precinto y destino de la interfaz solo operan sobre esa respuesta. Cada bolsín tiene un botón propio para enviar una notificacion interna a la bandeja de su comision de destino; luego se muestra `Notificación enviada`. Los usuarios que inicien sesión con esa comisión pueden verla en `Notificaciones`. No requiere correo ni credenciales de un proveedor externo. Seleccionar una fila solo muestra su detalle y ubicación.
 
 ## Requisitos locales
 
 - Java 17 o superior y Maven.
-- PostgreSQL.
+- H2 para desarrollo (se crea una base local persistente en `data/` sin contraseña).
+- PostgreSQL solo para otros entornos.
 - API mock de GPS provista en `dsi-api-bolsines`.
-- Acceso de red al proveedor cartografico elegido y al servicio de correo configurado.
+- Acceso de red al proveedor cartografico elegido y al GPS.
 
 ## Configuracion
 
-No guardar credenciales ni claves en archivos versionados. PPAI lee la base PostgreSQL desde `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD`. La clave compartida XTR se configura mediante `GPS_XTR_API_KEY` en PPAI y en el mock.
+No guardar credenciales ni claves reales en archivos versionados. El perfil local `dev` usa una base H2 persistente en `data/` con usuario `sa` y contraseña vacía. Para otros entornos, PPAI lee PostgreSQL desde `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD`. La clave XTR local predeterminada es `dev-xtr-local-key`; para reemplazarla, configurar `GPS_XTR_API_KEY` con el mismo valor en PPAI y en el mock.
 
 El mapa utiliza Google Maps cuando se configura `GOOGLE_MAPS_API_KEY`. La clave se entrega al navegador para cargar el mapa, por lo que debe restringirse por referer HTTP y por las APIs habilitadas en Google Cloud. Sin esa variable, el perfil local conserva el mapa Leaflet/OpenStreetMap existente.
 
-El envio real de correo requiere configurar `MAIL_GRAPH_TENANT_ID`, `MAIL_GRAPH_CLIENT_ID`, `MAIL_GRAPH_CLIENT_SECRET` y `MAIL_GRAPH_SENDER_EMAIL`. El adaptador solicita un token app-only con `client_credentials` y el scope `https://graph.microsoft.com/.default`, y envia mediante `POST /v1.0/users/{MAIL_GRAPH_SENDER_EMAIL}/sendMail`.
-
-En Microsoft Entra, abrir el registro de la aplicacion, ir a **API permissions** y agregar **Microsoft Graph > Application permissions > Mail.Send**. Luego un administrador debe ejecutar **Grant admin consent** para el tenant y comprobar que el permiso aparezca concedido. Debe existir el buzón remitente indicado en `MAIL_GRAPH_SENDER_EMAIL`; las restricciones de acceso a buzones de Exchange también deben permitir ese remitente. No alcanza con configurar las cuatro variables si el permiso o el consentimiento no están concedidos. El endpoint de Graph devuelve `202 Accepted` al aceptar el mensaje; la aplicacion solo informa ese resultado como aceptado, no como confirmacion de entrega. Los errores de token/permisos o envío se devuelven al usuario y no se reemplazan por una captura simulada.
-
-El cuerpo del correo contiene número de bolsín, precinto, código y nombre de comisión origen y destino, latitud, longitud y fecha/hora GPS. Cancelar el diálogo de confirmación no llama al endpoint de notificación. Si no existe email para la comisión destino, el backend lo informa antes de consultar el GPS o llamar a Microsoft Graph.
-
-Los correos de gerentes se consultan por codigo de comision en la tabla `comision_medica` (columna `email_gerente`). Hibernate crea la tabla con la estrategia `update`; cargar y mantener alli las comisiones y direcciones institucionales reales es responsabilidad de la configuracion del entorno. Si el correo de destino no esta registrado, la notificacion no se envia.
+La notificacion es interna: al usar el botón, queda disponible en la bandeja de los usuarios de la comisión de destino y no se duplica al volver a tocarlo, incluso desde otra sesión. No requiere Microsoft Graph, credenciales de correo ni la direccion de un gerente. No se envia correo.
 
 ## Ejecucion de desarrollo
 
-Crear la base `ppai_bolsines` en PostgreSQL. Configurar las variables indicadas en una terminal y arrancar el mock GPS con su configuracion local. Luego iniciar PPAI:
+No hace falta instalar/configurar PostgreSQL ni ingresar una contraseña para probar localmente. En una terminal, arrancar el mock GPS:
 
 ```powershell
-$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/ppai_bolsines"
-$env:SPRING_DATASOURCE_USERNAME = Read-Host "Usuario PostgreSQL"
-$env:SPRING_DATASOURCE_PASSWORD = Read-Host "Clave PostgreSQL"
-$env:GPS_XTR_API_KEY = Read-Host "Clave compartida XTR"
+cd dsi-api-bolsines
+.\mvnw.cmd spring-boot:run
+```
+
+En otra terminal, desde la raíz del proyecto, iniciar PPAI:
+
+```powershell
 mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
 ```
 
-Abrir `http://localhost:8081/`. El perfil `dev` habilita una sesion de prueba; no habilitarlo en un ambiente productivo. La ubicacion de cada bolsín siempre proviene del GPS: la aplicacion no genera coordenadas de respaldo.
+Abrir `http://localhost:8081/`. El perfil `dev` crea dos cuentas si no existen: `ana@example.com` / `demo1234` (comisión `CM-CBA-01`) y `luis@example.com` / `demo1234` (comisión `CM-ROS-02`). Para cambiar las cuentas de prueba se usan `PPAI_DEV_USER_EMAIL`, `PPAI_DEV_USER_PASSWORD`, `PPAI_DEV_USER2_EMAIL` y `PPAI_DEV_USER2_PASSWORD`. No habilitar el perfil `dev` en un ambiente productivo. Los datos se conservan entre ejecuciones en `data/`. La ubicación mostrada siempre proviene del GPS mock: la aplicación no genera coordenadas de respaldo.
+
+Las cuentas se almacenan en `usuario_sistema`: email en minúsculas, nombre, apellido, hash BCrypt de la contraseña y código de comisión existente. No hay registro público; el administrador de la base debe crear las cuentas y guardar solo hashes (nunca contraseñas en texto plano). En PostgreSQL se puede habilitar `pgcrypto` y generar un hash compatible con BCrypt mediante `crypt(:password, gen_salt('bf', 12))` en una inserción parametrizada. Cada usuario queda asociado a su propia comisión y sesión.
 
 ## API del caso de uso
 
-- `GET /api/seguimiento/sesion`: devuelve el empleado y su comision en sesion (`204` si no hay sesion).
+- `GET /api/seguimiento/sesion`: devuelve el empleado y su comision en sesion (`204` si no hay sesion; la respuesta no se almacena en cache).
+- `POST /api/sesion`: inicia sesión con `{ "email": "...", "password": "..." }`; las credenciales inválidas devuelven `401`.
+- `DELETE /api/sesion`: cierra la sesión actual.
 - `POST /api/seguimiento/consultas/{consultaId}`: registra el token de cancelación para una consulta asociada a la sesión actual.
-- `GET /api/seguimiento/bolsines?consultaId={consultaId}`: consulta bolsines enviados del origen permitido y sus ubicaciones GPS (`401` sin sesión, `409` si se canceló o no está activa, `502` si falla o devuelve datos inválidos el GPS).
+- `GET /api/seguimiento/consultar-ubicacion?consultaId={consultaId}`: consulta bolsines enviados del origen permitido y sus ubicaciones GPS (`401` sin sesión, `409` si se canceló o no está activa, `502` si falla o devuelve datos inválidos el GPS). `/api/seguimiento/bolsines` se mantiene como alias compatible.
 - `POST /api/seguimiento/consultas/{consultaId}/cancelacion`: cancela la consulta activa, abortando la llamada HTTP XTR en curso y evitando iniciar las ubicaciones pendientes.
-- `POST /api/seguimiento/bolsines/{numeroBolsin}/notificacion`: vuelve a verificar el bolsín, obtiene la ubicacion GPS actual y envia el correo al gerente destino (`202` al aceptar Graph, error si no puede enviarlo).
-- `POST /api/dev/sesion` y `DELETE /api/dev/sesion`: iniciar y cerrar la sesion local, solo con perfil `dev`.
+- `POST /api/seguimiento/bolsines/{numeroBolsin}/notificacion`: envía la notificacion a la bandeja de la comisión destino una sola vez (`202` al enviarla, `200` si ya existe).
+- `GET /api/seguimiento/notificaciones`: lista notificaciones recibidas en la bandeja de la comisión asignada a la sesión.
 - `GET /api/config/maps`: publica la clave de mapa configurada; responde vacia cuando no hay clave.
 
 ## Pruebas
@@ -65,4 +66,4 @@ Abrir `http://localhost:8081/`. El perfil `dev` habilita una sesion de prueba; n
 mvn test
 ```
 
-Las pruebas usan H2/mock MVC y dobles de GPS, persistencia y correo; no requieren credenciales externas. Cubren el Adapter XTR, restricciones de consulta, carga de sesion y la solicitud de correo a Microsoft Graph con el contenido requerido.
+Las pruebas usan H2/mock MVC y dobles de GPS y persistencia; no requieren credenciales externas. Cubren el Adapter XTR, restricciones de consulta, sesiones independientes por usuario, cancelación de consultas y entrega única de notificaciones a la bandeja de destino.

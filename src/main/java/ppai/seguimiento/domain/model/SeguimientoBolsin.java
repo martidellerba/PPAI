@@ -13,6 +13,22 @@ public record SeguimientoBolsin(
         EstadoBolsin estado,
         Double latitud,
         Double longitud,
-        LocalDateTime fechaHoraUltimaActualizacion
+        LocalDateTime fechaHoraUltimaActualizacion,
+        boolean notificacionRegistrada
 ) {
+    public SeguimientoBolsin(
+            Integer numeroBolsin,
+            String codigoComisionMedicaDestino,
+            String comisionMedicaDestino,
+            String numeroPrecinto,
+            LocalDate fechaEnvio,
+            Double peso,
+            EstadoBolsin estado,
+            Double latitud,
+            Double longitud,
+            LocalDateTime fechaHoraUltimaActualizacion
+    ) {
+        this(numeroBolsin, codigoComisionMedicaDestino, comisionMedicaDestino, numeroPrecinto, fechaEnvio, peso,
+                estado, latitud, longitud, fechaHoraUltimaActualizacion, false);
+    }
 }

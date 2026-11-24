@@ -16,19 +16,14 @@ public class ComisionMedicaEntity {
     @Column(name = "nombre", nullable = false)
     private String nombre;
 
-    @Column(name = "email_gerente")
-    private String emailGerente;
-
     protected ComisionMedicaEntity() {
     }
 
-    public ComisionMedicaEntity(String codigo, String nombre, String emailGerente) {
+    public ComisionMedicaEntity(String codigo, String nombre) {
         this.codigo = codigo;
         this.nombre = nombre;
-        this.emailGerente = emailGerente;
     }
 
     public String getCodigo() { return codigo; }
     public String getNombre() { return nombre; }
-    public String getEmailGerente() { return emailGerente; }
 }

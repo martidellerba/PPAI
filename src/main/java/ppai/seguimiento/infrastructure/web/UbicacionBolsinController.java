@@ -8,6 +8,7 @@ import ppai.seguimiento.application.usecase.NotificarSeguimientoBolsin;
 import ppai.seguimiento.domain.model.Empleado;
 import ppai.seguimiento.domain.model.SeguimientoBolsin;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -53,7 +54,7 @@ public class UbicacionBolsinController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/bolsines")
+    @GetMapping({"/consultar-ubicacion", "/bolsines"})
     public List<SeguimientoBolsin> consultarUbicacionBolsines(
             @RequestParam(required = false) UUID consultaId,
             HttpSession session
@@ -62,8 +63,8 @@ public class UbicacionBolsinController {
         if (consultaId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Falta el identificador de la consulta.");
         }
-        CancellationToken cancellationToken = cancellationRegistry.get(session.getId(), consultaId);
         try {
+            CancellationToken cancellationToken = cancellationRegistry.get(session.getId(), consultaId);
             return consultarUbicacionBolsines.ejecutar(empleadoLogueado, cancellationToken);
         } finally {
             cancellationRegistry.finish(session.getId(), consultaId);
@@ -71,23 +72,25 @@ public class UbicacionBolsinController {
     }
 
     @PostMapping("/consultas/{consultaId}/cancelacion")
-    public ResponseEntity<Void> cancelarConsulta(@PathVariable UUID consultaId, HttpSession session) {
+    public ResponseEntity<?> cancelarConsulta(@PathVariable UUID consultaId, HttpSession session) {
         requireEmployee(session);
         return cancellationRegistry.cancel(session.getId(), consultaId)
                 ? ResponseEntity.noContent().build()
-                : ResponseEntity.status(HttpStatus.CONFLICT).build();
+                : ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body("La consulta ya finalizó o ya fue cancelada.");
     }
 
     @GetMapping("/sesion")
     public ResponseEntity<Empleado> consultarSesion(HttpSession session) {
         Object usuarioEnSesion = session.getAttribute("empleadoLogueado");
-        return usuarioEnSesion instanceof Empleado empleado
-                ? ResponseEntity.ok(empleado)
-                : ResponseEntity.noContent().build();
+        if (usuarioEnSesion instanceof Empleado empleado) {
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(empleado);
+        }
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @PostMapping("/bolsines/{numeroBolsin}/notificacion")
-    public ResponseEntity<Void> notificarSeguimiento(
+    public ResponseEntity<NotificationResponse> notificarSeguimiento(
             @PathVariable Integer numeroBolsin,
             HttpSession session
     ) {
@@ -95,8 +98,18 @@ public class UbicacionBolsinController {
         if (!(usuarioEnSesion instanceof Empleado empleadoLogueado)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No hay un empleado logueado en la sesion.");
         }
-        notificarSeguimientoBolsin.ejecutar(empleadoLogueado, numeroBolsin);
-        return ResponseEntity.accepted().build();
+        NotificarSeguimientoBolsin.Resultado resultado =
+                notificarSeguimientoBolsin.ejecutar(empleadoLogueado, numeroBolsin);
+        String destino = resultado.comisionMedicaDestino() + " (" + resultado.codigoComisionDestino() + ")";
+        NotificationResponse response = new NotificationResponse(
+                resultado.registradaAhora(),
+                resultado.codigoComisionDestino(),
+                resultado.comisionMedicaDestino(),
+                resultado.registradaAhora()
+                        ? "Notificación enviada a la bandeja de " + destino + "."
+                        : "La notificación ya estaba en la bandeja de " + destino + "."
+        );
+        return ResponseEntity.status(resultado.registradaAhora() ? HttpStatus.ACCEPTED : HttpStatus.OK).body(response);
     }
 
     @ExceptionHandler(BolsinNoEncontradoException.class)
@@ -107,6 +120,11 @@ public class UbicacionBolsinController {
     @ExceptionHandler({CancellationException.class, ConsultaNoActivaException.class})
     public ResponseEntity<String> handleConsultaCancelada(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<String> handleResponseStatus(ResponseStatusException exception) {
+        return ResponseEntity.status(exception.getStatusCode()).body(exception.getReason());
     }
 
     private Empleado requireEmployee(HttpSession session) {
@@ -124,10 +142,11 @@ public class UbicacionBolsinController {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(exception.getMessage());
     }
 
-    @ExceptionHandler(ppai.seguimiento.application.usecase.GerenteComisionNoConfiguradoException.class)
-    public ResponseEntity<String> handleGerenteNoConfigurado(
-            ppai.seguimiento.application.usecase.GerenteComisionNoConfiguradoException exception
+    public record NotificationResponse(
+            boolean registradaAhora,
+            String codigoComisionDestino,
+            String comisionMedicaDestino,
+            String mensaje
     ) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 }

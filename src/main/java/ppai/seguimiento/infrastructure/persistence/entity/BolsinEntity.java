@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "bolsin")
@@ -42,6 +43,12 @@ public class BolsinEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoBolsin estado;
+
+    @Column(name = "notificacion_enviada")
+    private Boolean notificacionRegistrada = false;
+
+    @Column(name = "fecha_hora_notificacion")
+    private LocalDateTime fechaHoraNotificacion;
 
     protected BolsinEntity() {
     }
@@ -102,5 +109,18 @@ public class BolsinEntity {
 
     public EstadoBolsin getEstado() {
         return estado;
+    }
+
+    public boolean isNotificacionRegistrada() {
+        return Boolean.TRUE.equals(notificacionRegistrada);
+    }
+
+    public LocalDateTime getFechaHoraNotificacion() {
+        return fechaHoraNotificacion;
+    }
+
+    public void marcarNotificacionRegistrada() {
+        notificacionRegistrada = true;
+        fechaHoraNotificacion = LocalDateTime.now();
     }
 }

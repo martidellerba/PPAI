@@ -2,16 +2,13 @@ package ppai.seguimiento.domain.model;
 
 import java.time.LocalDateTime;
 
-public record NotificacionSeguimiento(
+public record NotificacionInterna(
         Integer numeroBolsin,
         String numeroPrecinto,
         String codigoComisionMedicaOrigen,
         String comisionMedicaOrigen,
         String codigoComisionMedicaDestino,
         String comisionMedicaDestino,
-        String emailGerenteDestino,
-        LocalDateTime fechaHoraUltimaActualizacion,
-        Double latitud,
-        Double longitud
+        LocalDateTime fechaHora
 ) {
 }
